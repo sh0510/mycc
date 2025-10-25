@@ -1,0 +1,30 @@
+#!/bin/bash
+
+
+# --noexecstack is for supressing the warning, "missing .note.GNU-stack section implies executable stack"
+# c.f. https://qiita.com/rarul/items/e1920e7ae5d5a28eec03
+AFLAGS="-Wa,--noexecstack"
+
+assert(){
+	expected="$1"
+	input="$2"
+
+	./mycc "$input" > tmp.s
+	cc -o tmp tmp.s ${AFLAGS}
+	./tmp
+	actual="$?"
+
+	if [ "$actual" = "$expected" ]; then
+		echo "$input => $actual"
+	else
+		echo "$input => $expected, $expected  expected, but got $actual"
+		exit 1
+	fi
+}
+
+assert 0 0
+assert 42 42
+assert 42 123
+
+echo OK
+
