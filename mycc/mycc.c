@@ -68,7 +68,8 @@ bool consume(char op){
 //
 void expect(char op){
 	if(token->kind != TK_RESERVED || token->str[0] != op){
-		error("Not '%c'", op);
+		//error("Not '%c'", op);
+		error_at(token->str, "Not '%c'", op);
 	}
 	token = token->next;
 }
@@ -76,7 +77,8 @@ void expect(char op){
 //
 int expect_number(){
 	if(token->kind != TK_NUM){
-		error("Not a number");
+		//error("Not a number");
+		error_at(token->str, "Not a number");
 	}
 
 	int val = token->val;
@@ -122,7 +124,8 @@ Token *tokenize(char*p){
 			continue;
 		}
 		
-		error("Cannot tokenize");
+		//error("Cannot tokenize");
+		error_at(token->str, "Cannot tokenize");
 	}
 
 	new_token(TK_EOF, cur, p);
@@ -138,12 +141,12 @@ int main(int argc, char **argv){
 		return 1;
 	}
 
-  token = tokenize(argv[1]);
+	user_input = argv[1];
+  token = tokenize(user_input);
 	printf(".intel_syntax noprefix\n");
 	printf(".globl main\n");
 	printf("main:\n");
 
-	//printf("	mov rax, %d\n", atoi(argv[1]));
 	printf("	mov rax, %d\n", expect_number());
 	while(!at_eof()){
 		if(consume('+')){
