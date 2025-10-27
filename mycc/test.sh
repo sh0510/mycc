@@ -33,6 +33,14 @@ assert 15 '5*(9-6)'
 assert 4 '(3+5)/2'
 assert 1 '-(3+5)+9'
 assert 1 '-3*+5+16'
+assert 1 '1>0'
+assert 0 '2>3'
+assert 1 '1>=0'
+assert 0 '0>=1'
+assert 1 '-1<0'
+assert 0 '-1<-2'
+assert 1 '-1<=0'
+assert 0 '-1<=-2'
 
 echo OK
 

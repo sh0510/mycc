@@ -78,7 +78,8 @@ void expect(char *op){
 		memcmp(token->str, op, token->len)
 	){
 		//error("Not '%c'", op);
-		error_at(token->str, "Not '%c'", op);
+		//error_at(token->str, "Not '%c'", op);
+		error_at(token->str, "expected \"%s\"", op);
 	}
 	token = token->next;
 }
@@ -112,6 +113,11 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len){
 }
 
 //
+bool startswith(char *p, char *q){
+	return memcmp(p, q, strlen(q)) == 0;
+}
+
+//
 Token *tokenize(char*p){
 	Token head;
 	head.next = NULL;
@@ -123,8 +129,20 @@ Token *tokenize(char*p){
 			continue;
 		}
 
+		//multi characters operator
+		if(
+			startswith(p, "==") ||
+			startswith(p, "!=") ||
+			startswith(p, "<=") ||
+			startswith(p, ">=")
+		){
+			cur = new_token(TK_RESERVED, cur, p, 2);
+			p+=2;
+			continue;
+		}
+
 		//if(*p=='+' | *p=='-' | *p=='*' | *p=='/' | *p=='(' | *p==')' ){
-		if(strchr("+-*/()",*p)){
+		if(strchr("+-*/()<>",*p)){
 			//cur = new_token(TK_RESERVED, cur, p++);
 			cur = new_token(TK_RESERVED, cur, p++, 1);
 			continue;
@@ -133,9 +151,9 @@ Token *tokenize(char*p){
 		if(isdigit(*p)){
 			//single operator
 			cur = new_token(TK_NUM, cur, p, 0);
-			char *p_tmp = p;
+			char *q = p;
 			cur->val = strtol(p, &p, 10);
-			cur->len = p-p_tmp;
+			cur->len = p-q;
 			continue;
 		}
 		
@@ -155,6 +173,10 @@ typedef enum{
 	ND_SUB, // -
 	ND_MUL, // *
 	ND_DIV, // /
+	ND_EQ, // ==
+	ND_NE, // !=
+	ND_LT, // <
+	ND_LE, // <=
 	ND_NUM, // Integer
 } NodeKind;
 
@@ -195,7 +217,10 @@ Node *expr();
 Node *mul();
 Node *primary();
 Node *unary();
-
+//
+Node *equality(); // -> "==", "!="
+Node *relational(); // -> "<", "<=", ">", ">="
+Node *add();
 
 //
 //Node *new_node_num(int val){
@@ -205,15 +230,63 @@ Node *unary();
 //	return node;
 //}
 
-// parimary = num | "(" exprt ")"
-Node *primary(){
-	if(consume("(")){
-		Node *node = expr();
-		expect(")");
-		return node;
-	}
+// expr = equality
+Node *expr(){
+	return equality();
+}
 
-	return new_num(expect_number());
+// equality = relational ("==" relational | "!=" relational)*
+Node *equality(){
+	Node *node = relational();
+	for(;;){ // )*
+		if(consume("==")){ // "==" relational
+			node = new_binary(ND_EQ, node, relational());
+		}
+		else if(consume("!=")){ // "!=" relational
+			node = new_binary(ND_NE, node, relational());
+		}
+		else{
+			return node;
+		}
+	}	
+}
+
+//relational = add ("" add | "<=" add | ">" add | ">=" add)*
+Node *relational(){
+	Node *node = add();
+	for(;;){
+		if(consume("<")){
+			node = new_binary(ND_LT, node, add());
+		}
+		else if(consume("<=")){
+			node = new_binary(ND_LE, node, add());
+		}
+		else if(consume(">")){
+			node = new_binary(ND_LT, add(), node);
+		}
+		else if(consume(">=")){
+			node = new_binary(ND_LE, add(), node);
+		}
+		else{
+			return node;
+		}
+	}
+}
+
+//add = mul ("+" mul | "-" mul)*
+Node *add(){
+	Node *node = mul();
+	for(;;){
+		if(consume("+")){
+			node = new_binary(ND_ADD, node, mul());
+		}
+		else if(consume("-")){
+			node = new_binary(ND_SUB, node, mul());
+		}
+		else{
+			return node;
+		}
+	}
 }
 
 // mul = unary ("*" unary | "/" unary)*
@@ -232,20 +305,31 @@ Node *mul(){
 	}
 }
 
-// exprt = mul ("+" mul | "-" mul)*
-Node *expr(){
-	Node *node = mul();
-	for(;;){
-		if(consume("+")){
-			node = new_binary(ND_ADD, node, mul());
-		}
-		else if(consume("-")){
-			node = new_binary(ND_SUB, node, mul());
-		}
-		else{
-			return node;
-		}
+// //unary = ("+" | "-")? primary
+//unary = ("+" | "-")? unary | primary
+Node *unary(){
+	if(consume("+")){
+		//return primary();
+		// eliminate sigle +
+		return unary();
 	}
+	//not "else if"???
+	if(consume("-")){
+		//return new_node(ND_SUB, new_node_num(0), primary());
+		return new_binary(ND_SUB, new_num(0), unary());
+	}
+	return primary();
+}
+
+// // parimary = num | "(" exprt ")"
+// primary = "(" expr ")" | num
+Node *primary(){
+	if(consume("(")){
+		Node *node = expr();
+		expect(")");
+		return node;
+	}
+	return new_num(expect_number());
 }
 
 
@@ -276,23 +360,31 @@ void gen(Node *node){
 			printf("	cqo\n");
 			printf("	idiv rdi\n");
 			break;
+		case ND_EQ:
+			printf("	cmp rax, rdi\n");
+			printf("	sete al\n");
+			//load al to rax with 0 extension. Clearing higher 56 bits. Lower 16 bits are al.
+			printf("	movzb rax, al\n");
+			break;
+		case ND_NE:
+			printf("	cmp rax, rdi\n");
+			// alternatively, ,,,
+			printf("	setne al\n");
+			printf("	movzb rax, al\n");
+			break;
+		case ND_LT:
+			printf("	cmp rax, rdi\n");
+			printf("	setl al\n");
+			printf("	movzb rax, al\n");
+			break;
+		case ND_LE:
+			printf("	cmp rax, rdi\n");
+			printf("	setle al\n");
+			printf("	movzb rax, al\n");
+			break;
 	}
 	printf("	push rax\n");
 }
-
-//
-Node *unary(){
-	if(consume("+")){
-		//return primary();
-		return unary();
-	}
-	if(consume("-")){
-		//return new_node(ND_SUB, new_node_num(0), primary());
-		return new_binary(ND_SUB, new_num(0), unary());
-	}
-	return primary();
-}
-
 
 //
 int main(int argc, char **argv){
