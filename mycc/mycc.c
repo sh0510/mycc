@@ -9,41 +9,23 @@
 //Token kind
 typedef enum{
 	TK_RESERVED,
+	TK_PUNCT,
 	TK_NUM,
 	TK_EOF,
 } TokenKind;
 
 typedef struct Token Token;
-
 //Token type
 struct Token{
 	TokenKind kind;
 	Token *next;
-	int val;
-	char *str;
+	int val; // Used as value if kind==TK_NUM
+	char *str; // Token location
 	int len; // Length of Token
 };
 
-Token *token;
-
-
-//
 char *user_input;
 
-//
-void error_at(char *loc, char *fmt, ...){
-	va_list ap;
-	va_start(ap, fmt);
-
-	int pos = loc - user_input;
-	fprintf(stderr, "%s\n", user_input);
-	// print pos th number of " " by '%*s" format specifier.
-	fprintf(stderr, "%*s", pos, " ");
-	fprintf(stderr, "^ ");
-	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\n");
-	exit(1);
-}
 
 //
 void error(char *fmt, ...){
@@ -53,63 +35,82 @@ void error(char *fmt, ...){
 	fprintf(stderr,"\n");
 	exit(1);
 }
+//
+void verror_at(char *loc, char *fmt, va_list ap){
+	int pos = loc - user_input;
+	fprintf(stderr, "%s\n", user_input);
+	// print pos th number of " " by '%*s" format specifier.
+	fprintf(stderr, "%*s", pos, " ");
+	fprintf(stderr, "^ ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	exit(1);
+}
+//
+void error_at(char *loc, char *fmt, ...){
+	va_list ap;
+	va_start(ap, fmt);
+	verror_at(loc, fmt, ap);
+}
+void error_token(Token *token, char *fmt, ...){
+	va_list ap;
+	va_start(ap, fmt);
+	//verror_at(token->str, fmt, ap);
+	error_at(token->str, fmt, ap);
+}
+
 
 
 
 //
-bool consume(char *op){
+bool equal(Token *token, char *op){
 	if(
 		token->kind != TK_RESERVED ||
+		//Alternatively, op[token->len]!='\0'
 		strlen(op) != token->len ||
 		memcmp(token->str, op, token->len)
 	){
 		return false;
 	}
-	token = token->next;
-	
 	return true;
 }
 
 //
-void expect(char *op){
-	if(
-		token->kind != TK_RESERVED ||
-		strlen(op) != token->len ||
-		memcmp(token->str, op, token->len)
-	){
+Token *expect(Token *token, char *op){
+	if(equal(token,op)==0){
 		//error("Not '%c'", op);
 		//error_at(token->str, "Not '%c'", op);
-		error_at(token->str, "expected \"%s\"", op);
+		//error_at(token->str, "expected \"%s\"", op);
+		error_token(token, "expected \"%s\"", op);
 	}
-	token = token->next;
+	return token = token->next;
 }
-
 //
-int expect_number(){
+int expect_number(Token **rest, Token *token){
 	if(token->kind != TK_NUM){
 		//error("Not a number");
-		error_at(token->str, "Not a number");
+		//error_at(token->str, "Not a number");
+		error_token(token, "Not a number");
 	}
 
 	int val = token->val;
-	token = token->next;
+	*rest = token->next;
 	return val;
 }
-
 //
-bool at_eof(){
+bool expect_eof(Token *token){
 	return token->kind == TK_EOF;
 }
 
 //
 Token *new_token(TokenKind kind, Token *cur, char *str, int len){
-	Token *tok = calloc(1, sizeof(Token));
-	tok->kind = kind;
-	tok->str = str;
-	tok->len = len;
-	cur->next = tok;
+	Token *token = calloc(1, sizeof(Token));
+	token->kind = kind;
+	token->str = str;
+	token->len = len;
+	cur->next = token;
 
-	return tok;
+	return token;
 }
 
 //
@@ -118,7 +119,8 @@ bool startswith(char *p, char *q){
 }
 
 //
-Token *tokenize(char*p){
+Token *tokenize(){
+	char *p = user_input;
 	Token head;
 	head.next = NULL;
 	Token *cur = &head;
@@ -140,28 +142,27 @@ Token *tokenize(char*p){
 			p+=2;
 			continue;
 		}
-
+		//ispunct()???
 		//if(*p=='+' | *p=='-' | *p=='*' | *p=='/' | *p=='(' | *p==')' ){
-		if(strchr("+-*/()<>",*p)){
+		else if(strchr("+-*/()<>",*p)){
 			//cur = new_token(TK_RESERVED, cur, p++);
-			cur = new_token(TK_RESERVED, cur, p++, 1);
-			continue;
+			//cur = new_token(TK_RESERVED, cur, p++, 1);
+			cur = new_token(TK_RESERVED, cur, p, 1);
+			p+=1;
 		}
-
-		if(isdigit(*p)){
+		else if(isdigit(*p)){
 			//single operator
 			cur = new_token(TK_NUM, cur, p, 0);
 			char *q = p;
 			cur->val = strtol(p, &p, 10);
 			cur->len = p-q;
-			continue;
 		}
-		
-		//error("Cannot tokenize");
-		error_at(token->str, "Cannot tokenize");
+		else{
+			//error("Cannot tokenize");
+			error_at(p, "Cannot tokenize");
+		}
 	}
-
-	new_token(TK_EOF, cur, p, 0);
+	cur = new_token(TK_EOF, cur, p, 0);
 
 	return head.next;
 }
@@ -213,14 +214,13 @@ Node *new_num(int val){
 }
 
 //
-Node *expr();
-Node *mul();
-Node *primary();
-Node *unary();
-//
-Node *equality(); // -> "==", "!="
-Node *relational(); // -> "<", "<=", ">", ">="
-Node *add();
+Node *expr(Token **rest, Token *token);
+Node *mul(Token **rest, Token *token);
+Node *primary(Token **rest, Token *token);
+Node *unary(Token **rest, Token *token);
+Node *equality(Token **rest, Token *token); // -> "==", "!="
+Node *relational(Token **rest, Token *token); // -> "<", "<=", ">", ">="
+Node *add(Token **rest, Token *token);
 
 //
 //Node *new_node_num(int val){
@@ -231,75 +231,79 @@ Node *add();
 //}
 
 // expr = equality
-Node *expr(){
-	return equality();
+Node *expr(Token **rest, Token *token){
+	return equality(rest, token);
 }
 
 // equality = relational ("==" relational | "!=" relational)*
-Node *equality(){
-	Node *node = relational();
+Node *equality(Token **rest, Token *token){
+	Node *node = relational(&token, token);
 	for(;;){ // )*
-		if(consume("==")){ // "==" relational
-			node = new_binary(ND_EQ, node, relational());
+		if(equal(token, "==")){ // "==" relational
+			node = new_binary(ND_EQ, node, relational(&token, token->next));
 		}
-		else if(consume("!=")){ // "!=" relational
-			node = new_binary(ND_NE, node, relational());
+		else if(equal(token, "!=")){ // "!=" relational
+			node = new_binary(ND_NE, node, relational(&token, token->next));
 		}
 		else{
+			*rest = token;
 			return node;
 		}
 	}	
 }
 
 //relational = add ("" add | "<=" add | ">" add | ">=" add)*
-Node *relational(){
-	Node *node = add();
+Node *relational(Token **rest, Token *token){
+	Node *node = add(&token, token);
 	for(;;){
-		if(consume("<")){
-			node = new_binary(ND_LT, node, add());
+		if(equal(token, "<")){
+			node = new_binary(ND_LT, node, add(&token, token->next));
 		}
-		else if(consume("<=")){
-			node = new_binary(ND_LE, node, add());
+		else if(equal(token, "<=")){
+			node = new_binary(ND_LE, node, add(&token, token->next));
 		}
-		else if(consume(">")){
-			node = new_binary(ND_LT, add(), node);
+		else if(equal(token, ">")){
+			node = new_binary(ND_LT, add(&token, token->next), node);
 		}
-		else if(consume(">=")){
-			node = new_binary(ND_LE, add(), node);
+		else if(equal(token, ">=")){
+			node = new_binary(ND_LE, add(&token, token->next), node);
 		}
 		else{
+			*rest = token;
 			return node;
 		}
 	}
 }
 
 //add = mul ("+" mul | "-" mul)*
-Node *add(){
-	Node *node = mul();
+Node *add(Token **rest , Token *token){
+	Node *node = mul(&token, token);
 	for(;;){
-		if(consume("+")){
-			node = new_binary(ND_ADD, node, mul());
+		if(equal(token, "+")){
+			node = new_binary(ND_ADD, node, mul(&token, token->next));
 		}
-		else if(consume("-")){
-			node = new_binary(ND_SUB, node, mul());
+		else if(equal(token, "-")){
+			node = new_binary(ND_SUB, node, mul(&token, token->next));
 		}
 		else{
+			*rest = token;
 			return node;
 		}
 	}
 }
 
 // mul = unary ("*" unary | "/" unary)*
-Node *mul(){
-	Node *node = unary();
+Node *mul(Token **rest , Token *token){
+	Node *node = unary(&token, token);
 	for(;;){
-		if(consume("*")){
-			node = new_binary(ND_MUL, node, unary());
+		if(equal(token, "*")){
+			node = new_binary(ND_MUL, node, unary(&token, token->next));
 		}
-		else if(consume("/")){
-			node = new_binary(ND_DIV, node, unary());
+		else if(equal(token, "/")){
+			node = new_binary(ND_DIV, node, unary(&token, token->next));
 		}
 		else{
+			*rest = token;
 			return node;
 		}
 	}
@@ -307,37 +311,39 @@ Node *mul(){
 
 // //unary = ("+" | "-")? primary
 //unary = ("+" | "-")? unary | primary
-Node *unary(){
-	if(consume("+")){
-		//return primary();
+Node *unary(Token **rest, Token *token){
+	if(equal(token, "+")){
+		//return primary(&token, token);
 		// eliminate sigle +
-		return unary();
+		return unary(rest, token->next);
 	}
-	//not "else if"???
-	if(consume("-")){
-		//return new_node(ND_SUB, new_node_num(0), primary());
-		return new_binary(ND_SUB, new_num(0), unary());
+	//not "else if"???
+	if(equal(token, "-")){
+		//Alternatively, use neg CPU instruction c.f. case ND_NEG of https://github.com/rui314/chibicc/commit/bf9ab52860c1cbbeeca40df515468f42300ff429#diff-a0cb465674c1b01a07d361f25a0ef2b0214b7dfe9412b7777f89add956da10ec
+		//return new_node(ND_SUB, new_node_num(0), primary(&token, token));
+		return new_binary(ND_SUB, new_num(0), unary(rest, token->next));
 	}
-	return primary();
+	return primary(rest, token);
 }
 
 // // parimary = num | "(" exprt ")"
 // primary = "(" expr ")" | num
-Node *primary(){
-	if(consume("(")){
-		Node *node = expr();
-		expect(")");
+Node *primary(Token **rest, Token *token){
+	if(equal(token, "(")){
+		Node *node = expr(&token, token->next);
+		*rest = expect(token, ")");
 		return node;
 	}
-	return new_num(expect_number());
+	return new_num(expect_number(rest, token));
 }
 
 
 //
 void gen(Node *node){
-	if(node->kind == ND_NUM){
-		printf("	push %d\n", node->val);
-		return;
+	switch(node->kind){
+		case ND_NUM:
+			printf("	push %d\n", node->val);
+			return;
 	}
 
 	gen(node->lhs);
@@ -384,6 +390,7 @@ void gen(Node *node){
 			break;
 	}
 	printf("	push rax\n");
+	return;
 }
 
 //
@@ -394,8 +401,8 @@ int main(int argc, char **argv){
 	}
 
 	user_input = argv[1];
-  token = tokenize(user_input);
-	Node *node = expr();
+	Token *token = tokenize();
+	Node *node = expr(&token, token);
 
 	printf(".intel_syntax noprefix\n");
 	printf(".globl main\n");
