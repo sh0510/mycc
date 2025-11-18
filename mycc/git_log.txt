@@ -1,0 +1,65 @@
+commit ebae8014ca3bc8467f225151e58a66542dc6eda7
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Thu Oct 30 23:21:37 2025 +0900
+
+    p95
+
+commit 8f242b9b464c2a188f7d3961aff6c13bf15d038b
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Mon Oct 27 21:32:11 2025 +0900
+
+    p82
+
+commit e621e4f060972fcfd505a841e1fe48775d5ef089
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 19:46:08 2025 +0900
+
+    Implement single character operator. Backup before implementing multi characters operator.
+
+commit 77d99516ea64ddd6485390a9a6830de55e4112c3
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 18:13:29 2025 +0900
+
+    p77
+
+commit d10bf170f08765cc4c85e1e2b466c0740cc4d365
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 16:59:04 2025 +0900
+
+    p74
+
+commit aba54c6b7cb5bdd3cdd36c5da4ca739c79a542a1
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 11:56:59 2025 +0900
+
+    p41
+
+commit 598466d454fac169f05076b78605f2014e5a6c71
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 07:19:45 2025 +0900
+
+    chdir
+
+commit 108cd2d7cb981f79b4c5568294e1e1bfd8891747
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 06:45:14 2025 +0900
+
+    p40
+
+commit 3ecedfd98beb7b91a73d13277e9c6ec190d23381
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 06:45:00 2025 +0900
+
+    p40
+
+commit 500fa81adf394aa8d82d4284dbc7e04ebc6e373d
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 01:53:38 2025 +0900
+
+    Add +/- function
+
+commit df724218c4ace70dc975fc21888f08355bdcb36f
+Author: sh0510 <shushuhabu0510@gmail.com>
+Date:   Sun Oct 26 01:21:55 2025 +0900
+
+    Create a compiler that compile a interger
