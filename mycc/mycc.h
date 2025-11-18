@@ -9,6 +9,7 @@
 //Token kind
 typedef enum{
 	TK_RESERVED,
+	TK_IDENT,
 	TK_PUNCT,
 	TK_NUM,
 	TK_EOF,
@@ -45,7 +46,9 @@ typedef enum{
 	ND_NE, // !=
 	ND_LT, // <
 	ND_LE, // <=
+	ND_ASSIGN, // =
 	ND_EXPRSTMT, // Expression Statement
+	ND_LVAR, // Variable
 	ND_NUM, // Integer
 } NodeKind;
 
@@ -53,9 +56,10 @@ typedef struct Node Node;
 struct Node{
 	NodeKind kind;
 	Node *next;
-	Node *lhs;
-	Node *rhs;
-	int val;
+	Node *lhs; // Left-hand side
+	Node *rhs; // Right-hand side
+	char name; // ND_VAR
+	int val; // ND_NUM
 };
 
 extern Node *parse(Token *token);
@@ -66,3 +70,4 @@ extern void codegen(Node *node);
 
 //debug
 void print_tokens(Token *token);
+void print_nodes(Node *node);

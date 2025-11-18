@@ -118,7 +118,7 @@ Token *tokenize(char *p){
 		}
 		//ispunct()???
 		//if(*p=='+' | *p=='-' | *p=='*' | *p=='/' | *p=='(' | *p==')' ){
-		else if(strchr("+-*/()<>;",*p)){
+		else if(strchr("+-*/()<>=;",*p)){
 			//cur = new_token(TK_RESERVED, cur, p++);
 			//cur = new_token(TK_RESERVED, cur, p++, 1);
 			cur->next = new_token(TK_RESERVED, cur, p, 1);
@@ -133,6 +133,11 @@ Token *tokenize(char *p){
 			cur->val = strtol(p, &p, 10);
 			cur->len = p-q;
 		}
+		else if('a'<=*p && *p<='z'){
+			cur->next = new_token(TK_IDENT, cur, p, 1);
+			cur = cur->next;
+			p+=1;
+		}
 		else{
 			//error("Cannot tokenize");
 			error_at(p, "Cannot tokenize");
@@ -144,4 +149,3 @@ Token *tokenize(char *p){
 
 	return head.next;
 }
-

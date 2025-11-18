@@ -3,10 +3,15 @@ CC=cc
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
-# If 'make DEBUG=1', add -DDEBUG_PRINT_TOKENS to CFLAGS for enabling debug.
-DEBUG ?= 0
-ifeq ($(DEBUG), 1)
+# If 'make DEBUG_PRINT_TOKENS=1', add -DDEBUG_PRINT_TOKENS to CFLAGS for enabling debug.
+DEBUG_PRINT_TOKENS ?= 0
+ifeq ($(DEBUG_PRINT_TOKENS), 1)
 	CFLAGS := -DDEBUG_PRINT_TOKENS
+endif
+# make DEBUG_PRINT_NODES=1
+DEBUG_PRINT_NODES ?= 0
+ifeq ($(DEBUG_PRINT_NODES), 1)
+	CFLAGS := -DDEBUG_PRINT_NODES
 endif
 
 mycc: $(OBJS)

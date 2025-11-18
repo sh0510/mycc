@@ -11,6 +11,9 @@ int main(int argc, char **argv){
 	print_tokens(token);
 #endif
 	Node *node = parse(token);
+#ifdef DEBUG_PRINT_NODES
+	print_nodes(node);
+#endif
 	codegen(node);
 
 	return 0;

@@ -20,7 +20,7 @@ static Node *new_unary(NodeKind kind, Node *expr){
 	node->lhs = expr;
 	return node;
 }
-//*node = calloc(1, sizeof(Node));
+//*node = 2calloc(1, sizeof(Node));
 //	node->kind = ND_NUM;
 //	node->val = val;
 //	return node;
@@ -30,6 +30,7 @@ static Node *new_unary(NodeKind kind, Node *expr){
 static Node *stmt(Token **rest, Token *token);
 static Node *exprstmt(Token **rest, Token *token);
 static Node *expr(Token **rest, Token *token);
+static Node *assign(Token **rest, Token *token);
 static Node *equality(Token **rest, Token *token); // -> "==", "!="
 static Node *relational(Token **rest, Token *token); // -> "<", "<=", ">", ">="
 static Node *add(Token **rest, Token *token);
@@ -56,6 +57,12 @@ static Node *new_num(int val){
 	return node;
 }
 
+static Node *new_var(char name){
+	Node *node = new_node(ND_LVAR);
+	node->name = name;
+	return node;
+}
+
 //Node *new_node_num(int val){
 //	Node n **rest, Token *token){
 	//c.f. return new_binary(ND_SUB, new_num(0), unary(rest, token->next));
@@ -65,9 +72,19 @@ static Node *new_num(int val){
 
 //}
 
-// expr = equality
+// expr = assign
 static Node *expr(Token **rest, Token *token){
-	return equality(rest, token);
+	return assign(rest, token);
+}
+
+//assign = equality ("=" assign)?
+static Node *assign(Token **rest, Token *token){
+	Node *node = equality(&token, token);
+	if(equal(token, "=")){
+		node = new_binary(ND_ASSIGN, node, assign(&token, token->next));
+	}
+	*rest = token;
+	return node;
 }
 
 // equality = relational ("==" relational | "!=" relational)*
@@ -163,13 +180,28 @@ static Node *unary(Token **rest, Token *token){
 
 // // parimary = num | "(" exprt ")"
 // primary = "(" expr ")" | num
+// primary = "(" expr ")" | num | ident
 static Node *primary(Token **rest, Token *token){
+	Node *node;
 	if(equal(token, "(")){
-		Node *node = expr(&token, token->next);
+		node = expr(&token, token->next);
 		*rest = expect(token, ")");
 		return node;
 	}
-	return new_num(expect_number(rest, token));
+	else if(token->kind == TK_IDENT){
+		node = new_var(*token->str);
+		*rest = token->next;
+		return node;
+	}
+	else if(token->kind == TK_NUM){
+		node = new_num(token->val);
+		*rest = token->next;
+		return node;
+	}
+	else{
+		error_token(token, "expected expression");
+	}
+	//return new_num(expect_number(rest, token));
 }
 
 
